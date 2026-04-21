@@ -5,7 +5,8 @@ import { Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
 
 export default function App() {
   const [input, setInput] = useState<string>("");
-  const { sendMessage, audioUrl, replyText, isLoading } = useChatAudio();
+  const { sendMessage, isTalking, volumeRef, replyText, isLoading, visemesRef, audioStartTimeRef, audioContextRef } = useChatAudio();
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSpeak = () => {
@@ -49,12 +50,19 @@ export default function App() {
       {/* Main Avatar View */}
       <main className="flex-1 relative flex flex-col items-center justify-center">
         <div className="w-full h-full max-w-4xl mx-auto">
-          <AvatarPlayer audioUrl={audioUrl} />
+          <AvatarPlayer 
+            isTalking={isTalking} 
+            volumeRef={volumeRef} 
+            visemesRef={visemesRef} 
+            audioStartTimeRef={audioStartTimeRef} 
+            audioContextRef={audioContextRef} 
+          />
+
         </div>
 
         {/* AI Response Overlay */}
         {replyText && !isLoading && (
-          <div className="absolute bottom-32 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 z-30">
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 z-30">
             <div className="ai-bubble mx-auto backdrop-blur-2xl">
               <div className="flex items-center gap-2 mb-2">
                 <Bot className="w-3.5 h-3.5 text-emerald-400" />
@@ -69,7 +77,7 @@ export default function App() {
 
         {/* Loading Indicator */}
         {isLoading && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-black/40 backdrop-blur-md p-6 rounded-3xl border border-white/10 flex flex-col items-center gap-4">
+          <div className="absolute top-[60%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-black/40 backdrop-blur-md p-6 rounded-3xl border border-white/10 flex flex-col items-center gap-4">
             <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
             <p className="text-xs text-white/60 font-bold tracking-widest uppercase font-mono">Synthesizing...</p>
           </div>
