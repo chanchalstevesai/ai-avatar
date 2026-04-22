@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import AvatarPlayer from "./components/AvatarPlayer";
 import useChatAudio from "./hooks/useChatAudio";
@@ -50,19 +51,19 @@ export default function App() {
       {/* Main Avatar View */}
       <main className="flex-1 relative flex flex-col items-center justify-center">
         <div className="w-full h-full max-w-4xl mx-auto">
-          <AvatarPlayer 
-            isTalking={isTalking} 
-            volumeRef={volumeRef} 
-            visemesRef={visemesRef} 
-            audioStartTimeRef={audioStartTimeRef} 
-            audioContextRef={audioContextRef} 
+          <AvatarPlayer
+            isTalking={isTalking}
+            volumeRef={volumeRef}
+            visemesRef={visemesRef}
+            audioStartTimeRef={audioStartTimeRef}
+            audioContextRef={audioContextRef}
           />
 
         </div>
 
         {/* AI Response Overlay */}
         {replyText && !isLoading && (
-          <div className="absolute bottom-7  left-[40%] -translate-x-1/2 w-full max-w-lg px-6 z-30">
+          <div className="absolute bottom-0 left-[40%] -translate-x-1/2 w-full max-w-lg px-6 z-30">
             <div className="ai-bubble mx-auto backdrop-blur-2xl">
               <div className="flex items-center gap-2 mb-2">
                 <Bot className="w-3.5 h-3.5 text-emerald-400" />
@@ -97,6 +98,7 @@ export default function App() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
           />
+
           <button
             onClick={handleSpeak}
             disabled={isLoading || !input.trim()}
@@ -109,3 +111,5 @@ export default function App() {
     </div>
   );
 }
+
+

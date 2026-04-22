@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
-const API_BASE_URL = "https://undenunciatory-stratous-tandra.ngrok-free.dev";
 const WS_BASE_URL = "wss://undenunciatory-stratous-tandra.ngrok-free.dev/ws/voice";
 
-// Generate SESSION_ID inside a function so StrictMode double-invoke doesn't conflict
 function makeSessionId() {
   return Math.random().toString(36).substring(7);
 }
@@ -21,9 +19,7 @@ export default function useChatAudio() {
   const [isLoading, setIsLoading] = useState(false);
   const [isTalking, setIsTalking] = useState(false);
 
-  // Use a ref for volume to prevent 60fps re-renders of the entire App
   const volumeRef = useRef(0);
-
   const sessionIdRef = useRef<string>("");
   const socketRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -33,28 +29,30 @@ export default function useChatAudio() {
   const visemesRef = useRef<Viseme[]>([]);
   const audioStartTimeRef = useRef<number>(0);
   const isFirstChunkRef = useRef<boolean>(true);
-
-  // FIX #3: Track next scheduled start time for gapless playback
   const nextStartTimeRef = useRef<number>(0);
+  const isInitializedRef = useRef<boolean>(false);
 
-  // FIX #4: Track whether viseme times are in ms or seconds
-  const visemeTimeUnitRef = useRef<"ms" | "s">("s");
-
-  // Initialize AudioContext on first use
+  // ── Init AudioContext ─────────────────────────────────────────────────────
   const initAudio = useCallback(() => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       analyserRef.current = audioContextRef.current.createAnalyser();
       analyserRef.current.fftSize = 128;
       analyserRef.current.connect(audioContextRef.current.destination);
+      console.log("[AUDIO] ✅ AudioContext created");
     }
     if (audioContextRef.current.state === "suspended") {
       audioContextRef.current.resume();
+      console.log("[AUDIO] ▶️ AudioContext resumed");
     }
   }, []);
 
-  // FIX #3 + #1: Gapless scheduled playback — no gaps between chunks, accurate start time
+  // ── Play next audio chunk from queue ──────────────────────────────────────
   const playNextChunk = useCallback(async () => {
+    if (!audioContextRef.current) {
+      console.warn("[AUDIO] ⚠️ AudioContext not ready yet");
+      return;
+    }
     if (isPlayingRef.current) return;
     if (audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
@@ -68,24 +66,24 @@ export default function useChatAudio() {
     const chunk = audioQueueRef.current.shift()!;
 
     try {
-      // Clone the buffer before decoding — decodeAudioData detaches the original
-      const cloned = chunk.slice(0);
-      const audioBuffer = await audioContextRef.current!.decodeAudioData(cloned);
-      const source = audioContextRef.current!.createBufferSource();
+      const audioBuffer = await audioContextRef.current.decodeAudioData(chunk.slice(0));
+      const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(analyserRef.current!);
 
-      const ctx = audioContextRef.current!;
+      const ctx = audioContextRef.current;
 
-      // FIX #3: Schedule gaplessly using next available slot
+      // Gapless scheduling
       const startAt = Math.max(ctx.currentTime, nextStartTimeRef.current);
       nextStartTimeRef.current = startAt + audioBuffer.duration;
 
-      // FIX #1: audioStartTimeRef is now the exact scheduled start time of first chunk
+      // Record start time of first chunk for viseme sync
       if (isFirstChunkRef.current) {
         audioStartTimeRef.current = startAt;
         isFirstChunkRef.current = false;
-        console.log("⏱️ Audio scheduled to start at:", startAt, "currentTime:", ctx.currentTime);
+        console.log("[AUDIO] ⏱️ First chunk starts at:", startAt);
+        console.log("[AUDIO] 🎯 Duration:", audioBuffer.duration.toFixed(3), "s");
+        console.log("[AUDIO] 📊 Visemes:", visemesRef.current.length);
       }
 
       source.onended = () => {
@@ -93,109 +91,149 @@ export default function useChatAudio() {
         playNextChunk();
       };
 
-      // FIX #1: start at the scheduled time, NOT start(0) which has variable delay
       source.start(startAt);
     } catch (e) {
-      console.error("Error decoding audio chunk:", e);
+      console.error("[AUDIO] ❌ Decode error:", e);
       isPlayingRef.current = false;
       playNextChunk();
     }
   }, []);
 
-  // Real-time volume analysis
+  // ── Volume analysis loop ──────────────────────────────────────────────────
   useEffect(() => {
-    let animationFrameId: number;
-    const dataArray = new Uint8Array(64);
+    let rafId: number;
+    const data = new Uint8Array(64);
 
-    const updateVolume = () => {
+    const tick = () => {
       if (analyserRef.current && isTalking) {
-        analyserRef.current.getByteFrequencyData(dataArray);
+        analyserRef.current.getByteFrequencyData(data);
         let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-        volumeRef.current = sum / dataArray.length / 128;
+        for (let i = 0; i < data.length; i++) sum += data[i];
+        volumeRef.current = sum / data.length / 128;
       } else {
         volumeRef.current = 0;
       }
-      animationFrameId = requestAnimationFrame(updateVolume);
+      rafId = requestAnimationFrame(tick);
     };
 
-    updateVolume();
-    return () => cancelAnimationFrame(animationFrameId);
+    tick();
+    return () => cancelAnimationFrame(rafId);
   }, [isTalking]);
 
+  // ── WebSocket lifecycle ───────────────────────────────────────────────────
   useEffect(() => {
-    // FIX: Session ID created per effect run, not module-level
     const sessionId = makeSessionId();
     sessionIdRef.current = sessionId;
+    console.log("[WS] 🔌 Connecting, session:", sessionId);
 
-    console.log("Connecting to WS with session:", sessionId);
     let socket: WebSocket;
-
     try {
       socket = new WebSocket(`${WS_BASE_URL}/${sessionId}`);
       socket.binaryType = "arraybuffer";
     } catch (e) {
-      console.error("Failed to create WebSocket:", e);
+      console.error("[WS] ❌ Failed to create WebSocket:", e);
       return;
     }
 
     socket.onopen = () => {
-      console.log("✅ [WS] Connected");
-      socket.send(JSON.stringify({ type: "init", session_id: sessionId }));
+      console.log("[WS] ✅ Connected");
+      // init is now handled in sendMessage to avoid auto-greeting on reloads
     };
 
-    socket.onerror = (error) => {
-      console.error("[WS] Connection error:", error);
-    };
+    socket.onerror = (err) => console.error("[WS] ❌ Error:", err);
 
     socket.onmessage = (event) => {
-      if (typeof event.data === "string") {
-        try {
-          const msg = JSON.parse(event.data);
 
-          if (msg.type === "audio_start") {
-            console.log("[WS] audio_start received");
+      // ── JSON control frames ─────────
+      if (typeof event.data === "string") {
+        let msg: any;
+        try {
+          msg = JSON.parse(event.data);
+        } catch {
+          console.warn("[WS] ⚠️ Non-JSON:", event.data);
+          return;
+        }
+
+        console.log("[WS] 📨 Type:", msg.type);
+
+        switch (msg.type) {
+
+          case "transcript_partial":
+            console.log("[WS] 🔄 Partial:", msg.text);
+            break;
+
+          case "transcript_final":
+            console.log("[WS] 📝 Final:", msg.text);
+            break;
+
+          case "llm_reply":
+            console.log("[WS] 🤖 LLM:", msg.text);
+            break;
+
+          case "audio_start":
+            // Visemes arrive here BEFORE binary audio chunks
+            console.log("[WS] audio_start, visemes:", msg.visemes?.length);
 
             if (msg.visemes && Array.isArray(msg.visemes) && msg.visemes.length > 0) {
-              // FIX #4: Auto-detect viseme time unit
-              // If the first viseme time > 5, it's almost certainly milliseconds
-              const firstTime = msg.visemes[0].time;
-              visemeTimeUnitRef.current = firstTime > 5 ? "ms" : "s";
-              console.log(`[WS] Viseme time unit detected: ${visemeTimeUnitRef.current} (first time: ${firstTime})`);
-              visemesRef.current = msg.visemes;
+              // Backend sends seconds already — safety check for ms
+              const needsConversion = msg.visemes.some((v: Viseme) => v.time > 30);
+              visemesRef.current = needsConversion
+                ? msg.visemes.map((v: Viseme) => ({ ...v, time: v.time / 1000 }))
+                : msg.visemes;
+
+              console.log("[WS] ✅ Visemes ready:",
+                `${visemesRef.current[0]?.viseme}@${visemesRef.current[0]?.time}s`,
+                "→",
+                `${visemesRef.current[visemesRef.current.length - 1]?.viseme}@${visemesRef.current[visemesRef.current.length - 1]?.time}s`
+              );
             } else {
               visemesRef.current = [];
+              console.warn("[WS] ⚠️ No visemes received");
             }
 
-            // Reset playback state
+            // Reset timing for this response
             audioStartTimeRef.current = 0;
             nextStartTimeRef.current = 0;
             isFirstChunkRef.current = true;
-            setIsLoading(false);
-            if (msg.text) setReplyText(msg.text);
-            initAudio();
-          }
 
-          if (msg.type === "audio_end") {
-            console.log("[WS] audio_end");
+            if (msg.text) setReplyText(msg.text);
             setIsLoading(false);
-          }
-        } catch (e) {
-          console.log("[WS] Non-JSON string:", event.data);
-          if (event.data.trim().toUpperCase() === "END") setIsLoading(false);
+
+            // Init AudioContext NOW so it's ready when binary chunks arrive
+            initAudio();
+            break;
+
+          case "audio_end":
+            console.log("[WS] 🔇 audio_end, chunks:", msg.chunk_count, "bytes:", msg.total_bytes);
+            setIsLoading(false);
+            break;
+
+          case "error":
+            console.error("[WS] ❌ Server error:", msg.detail);
+            setIsLoading(false);
+            setIsTalking(false);
+            break;
+
+          default:
+            console.log("[WS] ❓ Unknown:", msg.type);
         }
         return;
       }
 
+      // ── Binary audio chunks ──────────────────────────────────────────
       if (event.data instanceof ArrayBuffer) {
-        console.log("[WS] Binary audio chunk:", event.data.byteLength, "bytes");
+        console.log("[WS] 🎵 Chunk:", event.data.byteLength, "bytes");
         audioQueueRef.current.push(event.data);
-        if (audioContextRef.current) playNextChunk();
+        if (audioContextRef.current) {
+          playNextChunk();
+        } else {
+          console.warn("[WS] ⚠️ Chunk received but AudioContext not ready");
+        }
       }
     };
 
-    socket.onclose = (event) => {
-      console.log("[WS] Closed:", event.code, event.reason);
+    socket.onclose = (e) => {
+      console.log("[WS] 🔌 Closed:", e.code, e.reason);
       setIsLoading(false);
     };
 
@@ -203,7 +241,6 @@ export default function useChatAudio() {
 
     return () => {
       socket.close();
-      // FIX: Clean up AudioContext on unmount
       if (audioContextRef.current) {
         audioContextRef.current.close();
         audioContextRef.current = null;
@@ -211,14 +248,22 @@ export default function useChatAudio() {
     };
   }, [initAudio, playNextChunk]);
 
-  const sendMessage = async (message: string) => {
+  // ── sendMessage — WebSocket ONLY, no REST ────────────────────────────────
+  const sendMessage = useCallback((message: string) => {
     if (!message.trim()) return;
 
-    console.log("[Chat] Sending:", message);
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      console.error("[WS] ❌ Socket not open — cannot send");
+      return;
+    }
+
+    console.log("[WS] 📤 Sending text_input:", message);
+
+    // Reset all state before new response
     setIsLoading(true);
     setReplyText("");
-
-    // Reset all playback state
+    setIsTalking(false);
     audioQueueRef.current = [];
     isPlayingRef.current = false;
     visemesRef.current = [];
@@ -226,38 +271,23 @@ export default function useChatAudio() {
     nextStartTimeRef.current = 0;
     audioStartTimeRef.current = 0;
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/chat/text`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionIdRef.current, message }),
-      });
+    // Flows: text_input → backend queue → LLM → TTS → visemes → audio_start → binary → audio_end
 
-      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-
-      setIsLoading(false);
-      initAudio();
-
-      const encodedText = response.headers.get("x-reply-text");
-      if (encodedText) setReplyText(decodeURIComponent(encodedText));
-
-      const reader = response.body?.getReader();
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) {
-            audioQueueRef.current.push(value.buffer.slice(0));
-            if (audioContextRef.current) playNextChunk();
-          }
-        }
-      }
-    } catch (err) {
-      console.error("[Chat] Send Error:", err);
-      setIsLoading(false);
-      setIsTalking(false);
+    // Initialize session on first message if not already done
+    if (!isInitializedRef.current) {
+      console.log("[WS] 📤 Sending init for first message");
+      socket.send(JSON.stringify({
+        type: "init",
+        session_id: sessionIdRef.current,
+      }));
+      isInitializedRef.current = true;
     }
-  };
+
+    socket.send(JSON.stringify({
+      type: "text_input",
+      text: message,
+    }));
+  }, []);
 
   return {
     sendMessage,
@@ -268,6 +298,7 @@ export default function useChatAudio() {
     visemesRef,
     audioStartTimeRef,
     audioContextRef,
-    visemeTimeUnitRef,
   };
 }
+
+
