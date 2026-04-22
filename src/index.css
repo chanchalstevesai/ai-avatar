@@ -1,9 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #10b981; /* Emerald 500 */
-  --color-secondary: #3b82f6; /* Blue 500 */
-  --color-surface: #0f172a; /* Slate 900 */
+  --color-primary: #10b981;
+  /* Emerald 500 */
+  --color-secondary: #3b82f6;
+  /* Blue 500 */
+  --color-surface: #0f172a;
+  /* Slate 900 */
   --color-glass: rgba(255, 255, 255, 0.05);
 }
 
@@ -15,9 +18,13 @@
 }
 
 /* Custom Utilities for Tailwind v4 */
+@utility glass-morphism {
+  @apply bg-white/5 backdrop-blur-2xl border border-white/10;
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2), inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
+}
+
 @utility glass-card {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  @apply glass-morphism rounded-2xl;
 }
 
 @utility glow-button {
@@ -27,14 +34,12 @@
 }
 
 @utility ai-bubble {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10 p-4 rounded-2xl rounded-tl-none max-w-[80%];
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  animation: slideUp 0.4s ease-out forwards;
+  @apply glass-morphism p-5 rounded-2xl rounded-bl-none max-w-[80%];
+  animation: entrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @utility input-area {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center p-1 px-4 gap-3 focus-within:border-emerald-500/50 transition-colors;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  @apply glass-morphism rounded-2xl flex items-center p-1 px-4 gap-3 focus-within:border-emerald-500/50 transition-colors;
 }
 
 .glow-button:hover {
@@ -42,14 +47,30 @@
   box-shadow: 0 0 25px rgba(16, 185, 129, 0.6);
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes entrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    filter: blur(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
 }
 
 @keyframes pulse-slow {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .animate-pulse-slow {
