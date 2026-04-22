@@ -126,11 +126,11 @@ export default function useChatAudio(): ChatAudioHook {
     }
 
     socket.onopen = () => {
-      console.log("[WS] Connected");
+      console.log("[WS]  Connected");
       // init is handled in sendMessage
     };
 
-    socket.onerror = (err) => console.error("[WS] Error:", err);
+    socket.onerror = (err) => console.error("[WS]  Error:", err);
 
     socket.onmessage = (event) => {
       if (typeof event.data === "string") {
@@ -166,7 +166,7 @@ export default function useChatAudio(): ChatAudioHook {
             break;
 
           case "error":
-            console.error("[WS] Server error:", msg.detail);
+            console.error("[WS] ❌ Server error:", msg.detail);
             setIsLoading(false);
             setIsTalking(false);
             break;
@@ -203,7 +203,7 @@ export default function useChatAudio(): ChatAudioHook {
 
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.error("[WS] Socket not open");
+      console.error("[WS] ❌ Socket not open");
       return;
     }
 

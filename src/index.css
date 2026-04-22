@@ -34,7 +34,7 @@
 }
 
 @utility ai-bubble {
-  @apply glass-morphism p-5 rounded-2xl rounded-bl-none max-w-[80%];
+  @apply glass-morphism p-6 rounded-3xl max-w-full w-full shadow-2xl;
   animation: entrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 

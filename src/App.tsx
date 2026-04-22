@@ -37,7 +37,7 @@ export default function App() {
       <Header />
 
       {/* Main Avatar View */}
-      <main className="flex-1 relative flex flex-col items-center justify-center">
+      <div className="flex-1 relative flex flex-col items-center justify-center bg-none">
         <div className="w-full h-full">
           <AvatarPlayer
             isTalking={isTalking}
@@ -52,7 +52,7 @@ export default function App() {
           replyText={replyText} 
           isLoading={isLoading} 
         />
-      </main>
+      </div>
 
       <InputArea 
         input={input}

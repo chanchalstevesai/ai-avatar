@@ -13,4 +13,6 @@ export interface ChatAudioHook {
   visemesRef: React.MutableRefObject<Viseme[]>;
   audioStartTimeRef: React.MutableRefObject<number>;
   audioContextRef: React.MutableRefObject<AudioContext | null>;
+  
+   
 }
