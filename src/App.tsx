@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import AvatarPlayer from "./components/avatar/AvatarPlayer";
 import useChatAudio from "./hooks/useChatAudio";
@@ -7,6 +8,7 @@ import ChatOverlay from "./components/chat/ChatOverlay";
 
 export default function App() {
   const [input, setInput] = useState<string>("");
+  
   const { 
     sendMessage, 
     isTalking, 
@@ -20,10 +22,19 @@ export default function App() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSpeak = () => {
-    if (!input.trim() || isLoading) return;
-    sendMessage(input);
-    setInput("");
+  const handleSpeak = (message?: string) => {
+    const textToSend = message || input.trim();
+    if (!textToSend || isLoading) return;
+    
+    console.log("Sending message:", textToSend, "Type:", message ? "voice" : "typed");
+    
+    sendMessage(textToSend);
+    
+
+    if (!message) {
+      setInput("");
+      console.log("Input cleared for typed message");
+    }
   };
 
   return (
@@ -62,6 +73,5 @@ export default function App() {
         inputRef={inputRef}
       />
     </div>
-
   );
 }

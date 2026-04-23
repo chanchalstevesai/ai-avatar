@@ -82,7 +82,6 @@ export const useLipSync = ({
         const nextViseme = visemes[currentIdx + 1] || null;
 
         if (lastVisemeRef.current !== currentViseme.viseme) {
-          // console.log(`🎤 Viseme: ${currentViseme.viseme} at ${elapsed.toFixed(3)}s`);
           lastVisemeRef.current = currentViseme.viseme;
         }
 

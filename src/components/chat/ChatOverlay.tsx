@@ -10,7 +10,7 @@ const ChatOverlay = ({ replyText, isLoading }: Props) => {
     <>
       {/* AI Response Overlay */}
       {replyText && !isLoading && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-30">
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-30">
           <div className="ai-bubble mx-auto backdrop-blur-2xl max-h-[30vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
             <p className="text-sm md:text-base leading-relaxed text-white/90 font-medium">
               {replyText}
