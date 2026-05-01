@@ -19,7 +19,6 @@ const AvatarPlayer = ({
 }: AvatarProps) => {
   const [headMesh, setHeadMesh] = useState<THREE.Mesh | null>(null);
   const [teethMesh, setTeethMesh] = useState<THREE.Mesh | null>(null);
-
   const [isLoaded, setIsLoaded] = useState(false);
 
   const handleMesh = (mesh: THREE.Object3D) => {

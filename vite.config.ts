@@ -22,7 +22,8 @@ export default defineConfig({
 
     server: {
     allowedHosts: [
-      'statically-noxious-bridget.ngrok-free.dev'
+      'statically-noxious-bridget.ngrok-free.dev',
+      'pseudohypertrophic-dowy-kasha.ngrok-free.dev'
     ]
   }
 })

@@ -197,7 +197,7 @@ const InputArea = ({ input, setInput, isLoading, onSend, inputRef }: Props) => {
   };
 
   return (
-    <footer className="relative z-20 w-full max-w-3xl mx-auto p-8 mb-4">
+    <footer className="relative z-20 w-full max-w-3xl mx-auto p-6 mb-4">
       <div className="input-area backdrop-blur-3xl group">
         <User className="w-5 h-5 text-white/20 group-focus-within:text-emerald-500/50 transition-colors" />
         
